@@ -24,7 +24,7 @@ import * as os from "os";
 import * as path from "path";
 import { applyExtensionDefaults } from "./themeMap.ts";
 
-const FALLBACK_MODEL = "openrouter/google/gemini-3.5-flash";
+const FALLBACK_MODEL = "openrouter/google/gemini-3.6-flash";
 const THINKING_OVERRIDES = ["low", "medium", "high", "xhigh"] as const;
 type ThinkingOverride = (typeof THINKING_OVERRIDES)[number];
 

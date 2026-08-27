@@ -50,7 +50,6 @@ def main(prompt: str, config: str = "adws/adw_sssf_config/sssf.config.yaml", adw
         ph.log(passed=result.passed, checks=f"{passed}/{len(result.checks)}",
                artifacts=", ".join(result.artifacts))
 
-    test_result = None
     quality_result = None
     for i in range(1, MAX_FIX_LOOPS + 1):
         with run.phase(PhaseParams(name=f"verify_{i}", kind="code", owner="quality",
@@ -58,27 +57,22 @@ def main(prompt: str, config: str = "adws/adw_sssf_config/sssf.config.yaml", adw
             quality_result = quality.run_quality(run)
             record(ph, quality_result)
 
-        # run_quality() already includes the test block; a repo that wants tests
-        # in their own phase can split them out the way this comment does.
-        test_result = quality_result
-
-        if quality_result.passed and test_result.passed:
+        if quality_result.passed:
             break
         if i == MAX_FIX_LOOPS:
             break
 
         # Whichever block failed becomes the builder's spec — verbatim command
         # output, no parser standing between the failure and the fix.
-        broken = quality_result if not quality_result.passed else test_result
-        what = "verification" if not quality_result.passed else "tests"
+        broken = quality_result
+        what = "verification"
         with run.phase(PhaseParams(name=f"fix_{i}", kind="agent", owner="builder", retries=1,
                                    description=f"Resolve the reported {what} failures")) as ph:
             previous = ph.call(AgentCall(output_type=BuildOutput, prompt=prompt,
-                                         previous=quality.as_envelope(broken, what),
-                                         gates=[gates.diff_matches_claims]))
+                                        previous=quality.as_envelope(broken, what),
+                                        gates=[gates.diff_matches_claims]))
 
-    verified = (quality_result is not None and quality_result.passed
-                and test_result is not None and test_result.passed)
+    verified = quality_result is not None and quality_result.passed
     if verified:
         with run.phase(PhaseParams(name="commit", kind="code", owner="git",
                                    description="Commit the tested and quality-verified working tree")) as ph:
