@@ -12,6 +12,8 @@ export default [
 			'package/**',
 			'src/test/create-examples.test.ts',
 			'bin/checkmate.js',
+			'adws/**',
+			'.claude/skills/sssf/templates/harness_engineering/**',
 		],
 	},
 	js.configs.recommended,
