@@ -207,12 +207,7 @@ export default function (pi: ExtensionAPI) {
 		} catch {}
 	}
 
-	function spawnAgent(
-		state: SubState,
-		prompt: string,
-		ctx: any,
-		options: SpawnOptions = {},
-	): Promise<void> {
+	function resolveSpawnSettings(ctx: any, options: SpawnOptions = {}): { model: string; thinking: ThinkingLevel } {
 		const parentProvider = ctx.model?.provider?.trim();
 		const parentModelId = ctx.model?.id?.trim();
 		const hasParentModel = parentProvider && parentModelId
@@ -220,8 +215,19 @@ export default function (pi: ExtensionAPI) {
 		const parentModel = hasParentModel
 			? `${parentProvider}/${parentModelId}`
 			: FALLBACK_MODEL;
-		const model = options.model?.trim() || parentModel;
-		const thinking = options.thinking || pi.getThinkingLevel();
+		return {
+			model: options.model?.trim() || parentModel,
+			thinking: options.thinking || pi.getThinkingLevel(),
+		};
+	}
+
+	function spawnAgent(
+		state: SubState,
+		prompt: string,
+		ctx: any,
+		options: SpawnOptions = {},
+	): Promise<void> {
+		const { model, thinking } = resolveSpawnSettings(ctx, options);
 		state.model = model;
 		state.thinking = thinking;
 
@@ -331,9 +337,12 @@ export default function (pi: ExtensionAPI) {
 			};
 			agents.set(id, state);
 			updateWidgets();
+			const spawnSettings = resolveSpawnSettings(ctx, { model: args.model, thinking: args.thinking });
+			state.model = spawnSettings.model;
+			state.thinking = spawnSettings.thinking;
 
 			// Fire-and-forget
-			spawnAgent(state, args.task, ctx, { model: args.model, thinking: args.thinking });
+			spawnAgent(state, args.task, ctx, spawnSettings);
 
 			return {
 				content: [{ type: "text", text: `Subagent #${id} spawned with ${state.model} (${state.thinking} thinking) and is running in background.` }],
@@ -370,9 +379,12 @@ export default function (pi: ExtensionAPI) {
 			state.elapsed = 0;
 			state.turnCount++;
 			updateWidgets();
+			const spawnSettings = resolveSpawnSettings(ctx, { model: args.model, thinking: args.thinking });
+			state.model = spawnSettings.model;
+			state.thinking = spawnSettings.thinking;
 
 			ctx.ui.notify(`Continuing Subagent #${args.id} (Turn ${state.turnCount})…`, "info");
-			spawnAgent(state, args.prompt, ctx, { model: args.model, thinking: args.thinking });
+			spawnAgent(state, args.prompt, ctx, spawnSettings);
 
 			return {
 				content: [{ type: "text", text: `Subagent #${args.id} continuing with ${state.model} (${state.thinking} thinking) in background.` }],
@@ -456,9 +468,12 @@ export default function (pi: ExtensionAPI) {
 			};
 			agents.set(id, state);
 			updateWidgets();
+			const spawnSettings = resolveSpawnSettings(ctx, parsed.options);
+			state.model = spawnSettings.model;
+			state.thinking = spawnSettings.thinking;
 
 			// Fire-and-forget
-			spawnAgent(state, task, ctx, parsed.options);
+			spawnAgent(state, task, ctx, spawnSettings);
 			ctx.ui.notify(`Subagent #${id}: ${state.model} (${state.thinking} thinking)`, "info");
 		},
 	});
@@ -508,11 +523,14 @@ export default function (pi: ExtensionAPI) {
 			state.elapsed = 0;
 			state.turnCount++;
 			updateWidgets();
+			const spawnSettings = resolveSpawnSettings(ctx, parsed.options);
+			state.model = spawnSettings.model;
+			state.thinking = spawnSettings.thinking;
 
 			ctx.ui.notify(`Continuing Subagent #${num} (Turn ${state.turnCount})…`, "info");
 
 			// Fire-and-forget — reuses the same sessionFile for conversation history
-			spawnAgent(state, prompt, ctx, parsed.options);
+			spawnAgent(state, prompt, ctx, spawnSettings);
 			ctx.ui.notify(`Subagent #${num}: ${state.model} (${state.thinking} thinking)`, "info");
 		},
 	});

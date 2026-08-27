@@ -140,7 +140,7 @@ def test(run) -> QualityCheckResult:
     return _run(QualityCheckSpec(
         name="test",
         area="backend",
-        operation="build",
+        operation="test",
         argv=_placeholder("test"),        # e.g. ["bun", "test"] or ["uv", "run", "pytest", "-q"]
         timeout_seconds=600,
     ), run)
